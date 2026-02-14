@@ -4,16 +4,25 @@ from flask_cors import CORS
 from supabase import create_client, Client
 
 app = Flask(__name__)
-CORS(app) # Crucial for allowing Vercel to talk to Render
+# Allows your Vercel frontend to communicate with this Render backend
+CORS(app)
 
+# Environment Variables (Set these in Render Dashboard)
 url = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
+@app.route('/')
+def home():
+    return {"status": "Backend is live!", "message": "Visit /guestbook for data"}, 200
+
 @app.route('/guestbook', methods=['GET'])
 def get_entries():
-    response = supabase.table("guestbook").select("*").order("created_at", desc=True).execute()
-    return jsonify(response.data)
+    try:
+        response = supabase.table("guestbook").select("*").order("created_at", desc=True).execute()
+        return jsonify(response.data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/guestbook', methods=['POST'])
 def add_entry():
@@ -33,4 +42,6 @@ def delete_entry(id):
     return jsonify({"message": "Deleted successfully"}), 200
 
 if __name__ == '__main__':
-    app.run()
+    # Render assigns a port via environment variable
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
